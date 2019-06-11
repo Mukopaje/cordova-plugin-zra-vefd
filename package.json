@@ -1,0 +1,25 @@
+{
+  "name": "zm.co.vefdzpos",
+  "version": "1.0.0",
+  "description": "Cordova plugin for ZRA Fiscalization system, can work with other similar fiscal systems as long as its adapted",
+  "cordova": {
+    "id": "zm.co.vefdzpos",
+    "platforms": [
+      "android"
+    ]
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Mukopaje/cordova-plugin-zra-vefd.git"
+  },
+  "keywords": [
+    "ecosystem:cordova",
+    "cordova-android"
+  ],
+  "author": "Mukopaje Singogo",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Mukopaje/cordova-plugin-zra-vefd/issues"
+  },
+  "homepage": "https://github.com/Mukopaje/cordova-plugin-zra-vefd#readme"
+}
