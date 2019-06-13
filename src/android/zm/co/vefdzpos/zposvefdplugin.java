@@ -2,6 +2,8 @@ package zm.co.vefdzpos;
 
 import org.apache.cordova.CordovaPlugin;
 import org.apache.cordova.CallbackContext;
+import org.apache.cordova.CordovaInterface;
+import org.apache.cordova.CordovaWebView;
 
 import java.io.BufferedReader;
 import java.io.ByteArrayOutputStream;
@@ -21,15 +23,19 @@ import java.security.spec.X509EncodedKeySpec;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import android.widget.Toast;
+import android.util.Base64;
+// import org.apache.commons.codec.binary.Base64;
 
 import javax.crypto.Cipher;
 import javax.crypto.KeyGenerator;
 import javax.crypto.spec.SecretKeySpec;
-import org.apache.commons.codec.binary.Base64;
+// import org.apache.commons.codec.binary.Base64;
 
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
+import java.security.NoSuchAlgorithmException;
+import java.io.UnsupportedEncodingException;
 
 /**
  * This class echoes a string called from JavaScript.
@@ -81,9 +87,16 @@ public class zposvefdplugin extends CordovaPlugin {
 
     @Override
     public boolean execute(String action, JSONArray data, CallbackContext callbackContext) throws JSONException {
+
         if (action.equals("efdInit")) {
-            jiami(callbackContext);
-            return true;
+            try {
+                init(callbackContext);
+                return true;
+            } catch (Exception e) {
+                // TODO: handle exception
+                callbackContext.error(e.getMessage());
+            }
+
         } else if (action.equals("hasPrinter")) {
             // hasPrinter(callbackContext);
             return true;
@@ -93,79 +106,91 @@ public class zposvefdplugin extends CordovaPlugin {
         }
 
         return false;
+
     }
 
-    public static void jiami(final CallbackContext callbackContext) throws Exception {
-        String mingwen = jiek3mingwen;
-        String bus_id = jiek3bus;
-        System.out.println("The plaintext of the output is " + mingwen);
-        byte[] sjm = new byte[] {};
-        // sjm = desGenerateKey();
-        sjm = "44825304".getBytes();
-        // Read file generation private key
-        PrivateKey pri = getPriKey("RSA");
-        byte[] sjmMiwen = encryptRSA(sjm, pri, 3072, 11, "RSA/ECB/PKCS1Padding");
-        String sjmBase64 = (new sun.misc.BASE64Encoder()).encode(sjmMiwen);
-        if (sjmBase64 != null) {
-            Pattern p = Pattern.compile("\\s*|\t|\r|\n");
-            Matcher m = p.matcher(sjmBase64);
-            sjmBase64 = m.replaceAll("");
-        }
-        System.out.println("Output the ciphertext of the random number and then the value of Base64 " + sjmBase64);
-        Key k = toKey(sjm);
-        byte[] encryptData = encryptDSE(mingwen.getBytes(), k);
+    public static void init(final CallbackContext callbackContext) throws Exception {
+        try {
+            String mingwen = jiek3mingwen;
+            String bus_id = jiek3bus;
+            System.out.println("The plaintext of the output is " + mingwen);
+            byte[] sjm = new byte[] {};
+            // sjm = desGenerateKey();
+            sjm = "44825304".getBytes();
+            // Read file generation private key
+            PrivateKey pri = getPriKey("RSA");
+            byte[] sjmMiwen = encryptRSA(sjm, pri, 3072, 11, "RSA/ECB/PKCS1Padding");
+            String sjmBase64 = new String(Base64.encode(sjmMiwen, Base64.DEFAULT), "UTF-8");
+            if (sjmBase64 != null) {
+                Pattern p = Pattern.compile("\\s*|\t|\r|\n");
+                Matcher m = p.matcher(sjmBase64);
+                sjmBase64 = m.replaceAll("");
+            }
+            System.out.println("Output the ciphertext of the random number and then the value of Base64 " + sjmBase64);
+            Key k = toKey(sjm);
+            byte[] encryptData = encryptDSE(mingwen.getBytes(), k);
 
-        StringBuffer sb = new StringBuffer(encryptData.length);
-        String sTemp;
-        for (int i = 0; i < encryptData.length; i++) {
-            sTemp = Integer.toHexString(0xFF & encryptData[i]);
-            if (sTemp.length() < 2)
-                sb.append(0);
-            sb.append(sTemp.toUpperCase());
-        }
-        System.out.println(sb);
-        String content = (new sun.misc.BASE64Encoder()).encode(encryptData);
-        if (content != null) {
-            Pattern p = Pattern.compile("\\s*|\t|\r|\n");
-            Matcher m = p.matcher(content);
-            content = m.replaceAll("");
-        }
-        System.out.println("Encrypted content value " + content);
-        String sign = (new sun.misc.BASE64Encoder()).encode(md5(content));
-        System.out.println("The value of the encrypted sign " + sign);
-        String params = "";
-        if (!bus_id.equals("R-R-01")) {
-            params = "{\"message\":{\"body\":{\"data\":{\"device\":\"010800000010\",\"serial\":\"688877\",\"sign\":\""
-                    + sign + "\",\"key\":\"" + sjmBase64 + "\",\"bus_id\":\"" + bus_id + "\",\"content\":\"" + content
-                    + "\"}}}}";
-        } else {
-            params = "{\"message\":{\"body\":{\"data\":{\"device\":\"007644825304\",\"serial\":\"688877\",\"sign\":\""
-                    + sign + "\",\"key\":\"" + sjmBase64 + "\",\"bus_id\":\"" + bus_id + "\",\"content\":\"" + content
-                    + "\"}}}}";
+            StringBuffer sb = new StringBuffer(encryptData.length);
+            String sTemp;
+            for (int i = 0; i < encryptData.length; i++) {
+                sTemp = Integer.toHexString(0xFF & encryptData[i]);
+                if (sTemp.length() < 2)
+                    sb.append(0);
+                sb.append(sTemp.toUpperCase());
+            }
+            System.out.println(sb);
+            String content = new String(Base64.encode(encryptData, Base64.DEFAULT));
+            if (content != null) {
+                Pattern p = Pattern.compile("\\s*|\t|\r|\n");
+                Matcher m = p.matcher(content);
+                content = m.replaceAll("");
+            }
+            System.out.println("Encrypted content value " + content);
+            // Byte[] l = md5(content);
+            // String signedContent = md5String(content);
+            String sign = Base64.encodeToString(md5(content), Base64.DEFAULT);
+            // String sign = Base64.encode(b, Base64.DEFAULT);
+            System.out.println("The value of the encrypted sign " + sign);
+            String params = "";
+            if (!bus_id.equals("R-R-01")) {
+                params = "{\"message\":{\"body\":{\"data\":{\"device\":\"010800000010\",\"serial\":\"688877\",\"sign\":\""
+                        + sign + "\",\"key\":\"" + sjmBase64 + "\",\"bus_id\":\"" + bus_id + "\",\"content\":\""
+                        + content + "\"}}}}";
+            } else {
+                params = "{\"message\":{\"body\":{\"data\":{\"device\":\"007644825304\",\"serial\":\"688877\",\"sign\":\""
+                        + sign + "\",\"key\":\"" + sjmBase64 + "\",\"bus_id\":\"" + bus_id + "\",\"content\":\""
+                        + content + "\"}}}}";
 
+            }
+
+            System.out.println("Request message " + params);
+            String fh = sendPost(url, params);
+            System.out.println("Response message " + fh);
+            // JSONObject job = JSONObject.fromObject(fh);
+            JSONObject job = new JSONObject(fh);
+            JSONObject message = (JSONObject) job.get("message");
+            JSONObject body = (JSONObject) message.get("body");
+            JSONObject data = (JSONObject) body.get("data");
+            String fhkey = (String) data.get("key");
+            String fhcontent = (String) data.get("content");
+            System.out.println("Return the Key value to be decrypted " + fhkey);
+            System.out.println("Returns the value of the content to be decrypted " + fhcontent);
+            if (!bus_id.equals("R-R-01")) {
+                byte[] fhsjm = decryptRSA(Base64.decode(fhkey, Base64.DEFAULT), pri, 2048, 11, "RSA/ECB/PKCS1Padding");
+                System.out.println("RSA decrypted random code " + new String(fhsjm));
+                sjm = fhsjm;
+            }
+            Key k2 = toKey(sjm);
+            byte[] decryptDES = decryptDES(Base64.decode(fhcontent, Base64.DEFAULT), k2);
+            String fhmingwen = new String(decryptDES);
+            // System.out.println("Decrypted content data " + fhmingwen);
+            callbackContext.success("Decrypted content data " + fhmingwen);
+        } catch (Exception e) {
+            // TODO: handle exception
+            e.printStackTrace();
+            callbackContext.error(e.getMessage());
         }
 
-        System.out.println("Request message " + params);
-        String fh = sendPost(url, params);
-        System.out.println("Response message " + fh);
-        JSONObject job = JSONObject.fromObject(fh);
-        JSONObject message = (JSONObject) job.get("message");
-        JSONObject body = (JSONObject) message.get("body");
-        JSONObject data = (JSONObject) body.get("data");
-        String fhkey = (String) data.get("key");
-        String fhcontent = (String) data.get("content");
-        System.out.println("Return the Key value to be decrypted " + fhkey);
-        System.out.println("Returns the value of the content to be decrypted " + fhcontent);
-        if (!bus_id.equals("R-R-01")) {
-            byte[] fhsjm = decryptRSA(Base64.decodeBase64(fhkey), pri, 2048, 11, "RSA/ECB/PKCS1Padding");
-            System.out.println("RSA decrypted random code " + new String(fhsjm));
-            sjm = fhsjm;
-        }
-        Key k2 = toKey(sjm);
-        byte[] decryptDES = decryptDES(Base64.decodeBase64(fhcontent), k2);
-        String fhmingwen = new String(decryptDES);
-        // System.out.println("Decrypted content data " + fhmingwen);
-        callbackContext.success("Decrypted content data " + fhmingwen);
     }
 
     // Decrypt with public key (test environment determines if there is a problem
@@ -174,12 +199,12 @@ public class zposvefdplugin extends CordovaPlugin {
         String key = "Kv27UOkvOUF9tygkzDxKbr89MRtSnhhZoMM/G5kneUp3wJHS7uYJRJgLRbEEo1Sy57IqrffaL63fw6OZ9HrEHRuFd1LveQc4NGLn9LUr+0J8SB6XtIW+9MD/VZBgfsVZMCs/27VR60IanFN2IppNtaA6+i38xzoAXhPdivYNdmHWpW0kKBX40EpUzNU3WVA98f/khil90gxpidvbM49xJpeu3fj4ZVrF0bkqO+oSpz23llrrF2lhP8uljr4TvCCXQCnkBrJSfbfNkn4izNcp3loR8ARYuKx8dZgjJBcptgW8hh/EuAwN/ZMmpfwEvAidjqdXCOQlIBRf0X1XHn0476VRm4o7lyZOmsp23W/IeY7TArpPvVaX5ZzE1+zH0uVQbbtPMMqPLQKZNK6pivhKdVEqdY8Cipfo4w7EpvE4Ez+E/xp9ihqvOcqA+1uTh1NrS/7ftU9laodFbjn8/fLdgCJ4TkPfsvR1+6+ycMWiHJiwtyW0DkwLZIRjV9JSnUV2s+M+fExxC1cF9TNUvZhBAVQ0XiS4pGwiC96NJqkADDRFkHClDI80wJpsyt3yaJ9p0JB+BdBfa9UjGCkj5kRQ11ghYmmeiQEB979gQ+DWyP84l6mXA/SmyNvwSfum5MUGk1i1Dxq/iP33bushMZ4eGhIXIEyo2/aR2zFKjQktdKaF+EvIQLymS+8LiRui0J1e6j4GiO8aCNz0vU2A8yLsmdL9TIaWearNw/D0bohkREn5oKuzqUGtOl4EIf17BnYeCbVbWNUPIILrjMOhfjllb5zCYlxChTBEhGUbyYcIQxT/5YsN8PvCF5kMDyg9YyBUcA5KboVNeuriIw==";
         String content = "e2+Dga1Rhhz587dugo92N023EvR/Z0nKVmC3v4RGELI=";
         PublicKey pub = getPubKey("RSA");
-        byte[] sjm = decryptRSAPub(Base64.decodeBase64(key), pub, 2048, 11, "RSA/ECB/PKCS1Padding");
+        byte[] sjm = decryptRSAPub(Base64.decode(key, Base64.DEFAULT), pub, 2048, 11, "RSA/ECB/PKCS1Padding");
         Key k2 = toKey(sjm); // Only for interface 1
-        byte[] decryptDES = decryptDES(Base64.decodeBase64(content), k2);
+        byte[] decryptDES = decryptDES(Base64.decode(content, Base64.DEFAULT), k2);
         String fhmingwen = new String(decryptDES);
         System.out.println("Decrypted content data " + fhmingwen);
-        callbackContext.success("Decrypted content data " + fhmingwen);
+        // callbackContext.success("Decrypted content data " + fhmingwen);
     }
 
     /**
@@ -189,21 +214,29 @@ public class zposvefdplugin extends CordovaPlugin {
      * @throws Exception
      */
     public static String jiami(String mingwen, byte[] sjm) throws Exception {
-        // Read file generation private key
-        PrivateKey pri = getPriKey("RSA");
-        // Encrypt the plain text of the random number
-        byte[] sjmMiwen = encryptRSA(sjm, pri, 2048, 11, "RSA/ECB/PKCS1Padding");
-        // Encode random ciphertext
-        String sjmBase64 = (new sun.misc.BASE64Encoder()).encode(sjmMiwen);
-        System.out.println(
-                "Output the ciphertext of the random number and then the value of Base64             " + sjmBase64);
-        Key k = toKey(sjm);
-        byte[] encryptData = encryptDSE(mingwen.getBytes(), k);
-        String content = (new sun.misc.BASE64Encoder()).encode(encryptData);
-        System.out.println("Encrypted content value              " + content);
-        String sign = (new sun.misc.BASE64Encoder()).encode(md5(content));
-        System.out.println("The value of the encrypted sign                  " + sign);
-        return sign;
+        try {
+            // Read file generation private key
+            PrivateKey pri = getPriKey("RSA");
+            System.out.println("Private Key: " + pri);
+            // Encrypt the plain text of the random number
+            byte[] sjmMiwen = encryptRSA(sjm, pri, 2048, 11, "RSA/ECB/PKCS1Padding");
+            // Encode random ciphertext
+            String sjmBase64 = new String(Base64.encode(sjmMiwen, Base64.DEFAULT));
+            System.out.println(
+                    "Output the ciphertext of the random number and then the value of Base64             " + sjmBase64);
+            Key k = toKey(sjm);
+            byte[] encryptData = encryptDSE(mingwen.getBytes(), k);
+            String content = new String(Base64.encode(encryptData, Base64.DEFAULT));
+            System.out.println("Encrypted content value              " + content);
+
+            String sign = Base64.encodeToString(md5(content), Base64.DEFAULT);
+            System.out.println("The value of the encrypted sign                  " + sign);
+            return sign;
+
+        } catch (Exception e) {
+            // TODO: handle exception
+            e.printStackTrace();
+        }
 
     }
 
@@ -217,12 +250,12 @@ public class zposvefdplugin extends CordovaPlugin {
 
     public static String jiemi(String key, String content) throws Exception {
         PrivateKey pri = getPriKey("RSA");
-        byte[] sjm = decryptRSA(Base64.decodeBase64(key), pri, 2048, 11, "RSA/ECB/PKCS1Padding");
+        byte[] sjm = decryptRSA(Base64.decode(key, Base64.DEFAULT), pri, 2048, 11, "RSA/ECB/PKCS1Padding");
         System.out.println("RSA decrypted random code：" + new String(sjm));
         // "00000003".getBytes()
         Key k = toKey("30026147".getBytes());
         // Key k = toKey("87865651".getBytes());
-        byte[] decryptDES = decryptDES(Base64.decodeBase64(content), k);
+        byte[] decryptDES = decryptDES(Base64.decode(content, Base64.DEFAULT), k);
         String mingwen = new String(decryptDES);
         System.out.println("Decrypted content data:" + mingwen);
         return new String(mingwen);
@@ -302,7 +335,7 @@ public class zposvefdplugin extends CordovaPlugin {
             outbuf.flush();
             return outbuf.toByteArray();
         } catch (Exception e) {
-            throw new Exception("DEENCRYPT ERROR:", e);
+            throw new Exception("DEENCRYPT ERROR 1:", e);
         } finally {
             try {
                 if (outbuf != null) {
@@ -337,7 +370,7 @@ public class zposvefdplugin extends CordovaPlugin {
             outbuf.flush();
             return outbuf.toByteArray();
         } catch (Exception e) {
-            throw new Exception("DEENCRYPT ERROR:", e);
+            throw new Exception("DEENCRYPT ERROR 2:", e);
         } finally {
             try {
                 if (outbuf != null) {
@@ -373,11 +406,21 @@ public class zposvefdplugin extends CordovaPlugin {
     }
 
     public static byte[] decodeBase64(String input) throws Exception {
-        Class<?> clazz = Class.forName("com.sun.org.apache.xerces.internal.impl.dv.util.Base64");
+        Class<?> clazz = Class.forName("android.util.Base64");
         Method mainMethod = clazz.getMethod("decode", String.class);
         mainMethod.setAccessible(true);
         Object retObj = mainMethod.invoke(null, input);
         return (byte[]) retObj;
+    }
+
+    private String decodeBase64String(String coded) {
+        byte[] valueDecoded = new byte[0];
+        try {
+            valueDecoded = Base64.decode(coded.getBytes("UTF-8"), Base64.DEFAULT);
+        } catch (UnsupportedEncodingException e) {
+
+        }
+        return new String(valueDecoded);
     }
 
     public static byte[] encryptRSA(byte[] plainBytes, PrivateKey privateKey, int keyLength, int reserveSize,
@@ -405,7 +448,7 @@ public class zposvefdplugin extends CordovaPlugin {
             outbuf.flush();
             return outbuf.toByteArray();
         } catch (Exception e) {
-            throw new Exception("ENCRYPT ERROR:", e);
+            throw new Exception("ENCRYPT ERROR 3:", e);
         } finally {
             try {
                 if (outbuf != null) {
@@ -443,7 +486,7 @@ public class zposvefdplugin extends CordovaPlugin {
             outbuf.flush();
             return outbuf.toByteArray();
         } catch (Exception e) {
-            throw new Exception("ENCRYPT ERROR:", e);
+            throw new Exception("ENCRYPT ERROR 4:", e);
         } finally {
             try {
                 if (outbuf != null) {
@@ -514,4 +557,25 @@ public class zposvefdplugin extends CordovaPlugin {
         return response;
     }
 
+    /*
+     * Test converting string to MD5 hash
+     */
+    public static String md5String(String s) {
+        try {
+            // Create MD5 Hash
+            MessageDigest digest = java.security.MessageDigest.getInstance("MD5");
+            digest.update(s.getBytes());
+            byte messageDigest[] = digest.digest();
+
+            // Create Hex String
+            StringBuffer hexString = new StringBuffer();
+            for (int i = 0; i < messageDigest.length; i++)
+                hexString.append(Integer.toHexString(0xFF & messageDigest[i]));
+
+            return hexString.toString();
+        } catch (NoSuchAlgorithmException e) {
+            e.printStackTrace();
+        }
+        return "";
+    }
 }
