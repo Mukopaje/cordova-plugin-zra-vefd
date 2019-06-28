@@ -4,10 +4,10 @@ module.exports = {
 
     efdInit: function (resolve, reject) {
         exec(resolve, reject, "zposvefdplugin", "efdInit", []);
-    }
-    // printerRunPaper: function (msg, resolve, reject) {
-    //     exec(resolve, reject, "zposvefdplugin", "printerRunPaper", [msg]);
-    // },
+    },
+     initVEFD: function (reg, bus, key, resolve, reject) {
+         exec(resolve, reject, "zposvefdplugin", "initVEFD", [reg, bus, key]);
+     }
     // printKoubeiBill: function (resolve, reject) {
     //     exec(resolve, reject, "zposvefdplugin", "printKoubeiBill", []);
     // },

@@ -14,7 +14,9 @@ xmlns:android="http://schemas.android.com/apk/res/android">
 </config-file>
 <config-file parent="/*" target="AndroidManifest.xml">
 </config-file>
+<!-- <framework src="src/android/extras.gradle" custom="true" type="gradleReference" /> -->
 <source-file src="src/android/zm/co/vefdzpos/zposvefdplugin.java" target-dir="src/zm/co/vefdzpos/zposvefdplugin" />
-<source-file src="src/android/libs/sun.misc.base64decoder.jar" target-dir="libs/sun/" />
+<source-file src="src/android/zm/co/vefdzpos/RSA.java" target-dir="src/zm/co/vefdzpos/RSA" />
+<source-file src="src/android/libs/commons-codec-1.12-rep.jar" target-dir="libs" />
 </platform>
 </plugin>
